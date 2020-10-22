@@ -3,10 +3,11 @@ Design Patterns implemented in Dart 2.10.1
 
 Creational Patterns
 * [x] [Singleton](#singleton)
-* [ ] [Abstract Factory](#abstract-factory)
-* [ ] [Builder](#builder)
-* [ ] [Factory Method](#factory-method)
+* [x] [Abstract Factory](#abstract-factory)
+* [x] [Builder](#builder)
+* [x] [Factory Method](#factory-method)
 * [ ] [Prototype](#prototype)
+* [ ] [Object Pool](#object-pool)
 
 Structural Patterns
 * [x] [Adapter](#adapter)
@@ -61,9 +62,46 @@ Factory Method
 The factory method pattern is a creational pattern that uses factory methods to deal with the problem of creating objects without having to specify the exact class of the object that will be created. - [Wikipedia](https://en.wikipedia.org/wiki/Factory_method_pattern)
 ### Implementation
 ```dart
+abstract class Repairer {
+  void perform();
+}
+
+class CarRepairer extends Repairer {
+  @override
+  void perform() {
+    print("Starting repair a car.");
+  }
+}
+
+class BicycleRepairer extends Repairer {
+  @override
+  void perform() {
+    print("Starting repair a bicycle.");
+  }
+}
+
+enum Vehicle {
+  Car, Bicycle
+}
+
+abstract class VehicleFactory {
+  static Repairer getRepairer(Vehicle vehicle) {
+    switch (vehicle) {
+      case Vehicle.Car:
+        return CarRepairer();
+      case Vehicle.Bicycle:
+        return BicycleRepairer();
+    }
+  }
+}
 ```
 ### Usage
 ```dart
+var bicycleRepairer = VehicleFactory.getRepairer(Vehicle.Bicycle);
+bicycleRepairer.perform();
+
+var carRepairer = VehicleFactory.getRepairer(Vehicle.Car);
+carRepairer.perform();
 ```
 
 Abstract Factory
@@ -71,9 +109,79 @@ Abstract Factory
 The abstract factory pattern provides a way to encapsulate a group of individual factories that have a common theme without specifying their concrete classes. - [Wikipedia](https://en.wikipedia.org/wiki/Abstract_factory_pattern)
 ### Implementation
 ```dart
+enum Vehicle {
+  Car, Bicycle
+}
+
+abstract class Repairer {
+  void replaceTires();
+  void paint();
+}
+
+abstract class VehicleAbstractFactory {
+  Repairer getRepairer();
+}
+
+class VehicleFactory {
+  static VehicleAbstractFactory getFactory(Vehicle vehicle) {
+    switch (vehicle) {
+      case Vehicle.Car:
+        return CarRepairFactory();
+      case Vehicle.Bicycle:
+        return BicycleRepairFactory();
+    }
+  }
+}
+
+class BicycleRepairFactory implements VehicleAbstractFactory {
+  @override
+  Repairer getRepairer() {
+    return BicycleRepairer();
+  }
+}
+
+class BicycleRepairer extends Repairer {
+  @override
+  void paint() {
+    print("Hi sir, your bicycle will be paint on next 30 mins");
+  }
+
+  @override
+  void replaceTires() {
+    print("Hi sir, the bicycle's tires have been fixed.");
+  }
+}
+
+class CarRepairFactory implements VehicleAbstractFactory {
+  @override
+  Repairer getRepairer() {
+    return CarRepairer();
+  }
+}
+
+class CarRepairer extends Repairer {
+  @override
+  void paint() {
+    print("Hi sir, your car will be paint on next 3 hours");
+  }
+
+  @override
+  void replaceTires() {
+    print("Hi sir, the car's tires have been replaced.");
+  }
+}
 ```
 ### Usage
 ```dart
+  var factory = VehicleFactory.getFactory(Vehicle.Car);
+  var carRepairer = factory.getRepairer();
+  carRepairer.replaceTires();
+  carRepairer.paint();
+
+  var bicycleFactory = VehicleFactory.getFactory(Vehicle.Bicycle);
+  var bicycleRepairer = bicycleFactory.getRepairer();
+  bicycleRepairer.replaceTires();
+  bicycleRepairer.paint();
 ```
 
 Builder
@@ -81,9 +189,147 @@ Builder
 The builder pattern is a design pattern designed to provide a flexible solution to various object creation problems in object-oriented programming. The intent of the Builder design pattern is to separate the construction of a complex object from its representation. - [Wikipedia](https://en.wikipedia.org/wiki/Builder_pattern)
 ### Implementation
 ```dart
+enum MotherBoard {
+  Asus, Intel
+}
+
+enum CPU {
+  INTEL_Core_I5, INTEL_Core_7, AMD
+}
+
+enum RAM {
+  DDR3, DDR4, DDR5
+}
+
+enum NetworkCard {
+  TP_Link_TG, Intel_I350_T4
+}
+
+enum Keyboard {
+  Magic_Keyboard_2, Keychron_K6, Keychron_K8
+}
+
+enum Storage {
+  Seagate_SSD, SamSung_HDD
+}
+
+enum Monitor {
+  SamSung_LCL, DELL_LCD, LG_LCD
+}
+
+enum Mouse {
+  Logitech_M590, Magic_Mouse
+}
+
+class Computer {
+  MotherBoard motherboard;
+  CPU processor;
+  RAM memory;
+  Storage storage;
+  NetworkCard networkCard;
+  Monitor monitor;
+  Keyboard keyboard;
+  Mouse mouse;
+
+  Computer(this.motherboard, this.processor, this.memory, this.storage,
+      this.networkCard, this.monitor, this.keyboard, this.mouse);
+
+  @override
+  String toString() {
+    return " Computer Configuration:\n Processor: $processor \n Motherboard: $motherboard \n "
+        "Memory: $memory \n Storage: $storage \n Network card: $networkCard \n "
+        "Monitor: $monitor \n Keyboard: $keyboard \n Mouse: $mouse";
+  }
+}
+
+abstract class ComputerBuilder {
+  ComputerBuilder motherboard(MotherBoard mainboard);
+  ComputerBuilder processor(CPU cpu);
+  ComputerBuilder memory(RAM memory);
+  ComputerBuilder network(NetworkCard card);
+  ComputerBuilder storage(Storage disk);
+  ComputerBuilder monitor(Monitor monitor);
+  ComputerBuilder keyboard(Keyboard keyboard);
+  ComputerBuilder mouse(Mouse mouse);
+  Computer build();
+}
+
+class MartianComputerBuilder extends ComputerBuilder {
+  Keyboard _keyboard;
+  RAM _memory;
+  Mouse _mouse;
+  NetworkCard _networkCard;
+  CPU _processor;
+  Storage _storage;
+  MotherBoard _motherboard;
+  Monitor _monitor;
+
+  @override
+  ComputerBuilder keyboard(Keyboard keyboard) {
+    this._keyboard = keyboard;
+    return this;
+  }
+
+  @override
+  ComputerBuilder memory(RAM memory) {
+    this._memory = memory;
+    return this;
+  }
+
+  @override
+  ComputerBuilder mouse(Mouse mouse) {
+    this._mouse = mouse;
+    return this;
+  }
+
+  @override
+  ComputerBuilder network(NetworkCard card) {
+    this._networkCard = card;
+    return this;
+  }
+
+  @override
+  ComputerBuilder processor(CPU cpu) {
+    this._processor = cpu;
+    return this;
+  }
+
+  @override
+  ComputerBuilder storage(Storage disk) {
+    this._storage = disk;
+    return this;
+  }
+
+  @override
+  ComputerBuilder motherboard(MotherBoard mainboard) {
+    this._motherboard = mainboard;
+    return this;
+  }
+
+  @override
+  ComputerBuilder monitor(Monitor monitor) {
+    this._monitor = monitor;
+    return this;
+  }
+
+  @override
+  Computer build() {
+    return Computer(_motherboard, _processor, _memory, _storage, _networkCard, _monitor, _keyboard, _mouse);
+  }
+}
 ```
 ### Usage
 ```dart
+var computer = MartianComputerBuilder()
+      .motherboard(MotherBoard.Asus)
+      .processor(CPU.INTEL_Core_I5)
+      .memory(RAM.DDR3)
+      .network(NetworkCard.TP_Link_TG)
+      .storage(Storage.Seagate_SSD)
+      .monitor(Monitor.DELL_LCD)
+      .keyboard(Keyboard.Keychron_K6)
+      .mouse(Mouse.Logitech_M590).build();
+print(computer);
 ```
 
 Prototype
