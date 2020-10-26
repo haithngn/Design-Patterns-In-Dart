@@ -6,12 +6,12 @@ Creational Patterns
 * [x] [Abstract Factory](#abstract-factory)
 * [x] [Builder](#builder)
 * [x] [Factory Method](#factory-method)
-* [ ] [Prototype](#prototype)
-* [ ] [Object Pool](#object-pool)
+* [x] [Prototype](#prototype)
+* [x] [Object Pool](#object-pool)
 
 Structural Patterns
 * [x] [Adapter](#adapter)
-* [ ] [Bridge](#bridge)
+* [x] [Bridge](#bridge)
 * [ ] [Composite](#composite)
 * [ ] [Decorator](#decorator)
 * [ ] [Facade](#facade)
@@ -19,7 +19,7 @@ Structural Patterns
 * [ ] [Proxy](#proxy)
 
 Behavioral Patterns
-* [ ] [Chain of Responsibility](#chain-of-responsibility)
+* [x] [Chain of Responsibility](#chain-of-responsibility)
 * [ ] [Command](#command)
 * [ ] [Interpreter](#interpreter)
 * [ ] [Iterator](#iterator)
@@ -337,9 +337,54 @@ Prototype
 The prototype pattern is a creational design pattern in software development. It is used when the type of objects to create is determined by a prototypical instance, which is cloned to produce new objects. - [Wikipedia](https://en.wikipedia.org/wiki/Prototype_pattern)
 ### Implementation
 ```dart
+enum OS {
+  CentOS, OpenSUSE, Ubuntu
+}
+
+enum IDE {
+  AndroidStudio, IntelIJ
+}
+
+abstract class Computer {
+  void installIDE(IDE ide);
+}
+
+abstract class Cloneable {
+  Computer clone();
+}
+
+
+class LinuxComputer extends Computer implements Cloneable {
+  OS _operatingSystem;
+  IDE _ide;
+
+  LinuxComputer(this._operatingSystem);
+
+  @override
+  Computer clone() {
+    return LinuxComputer(this._operatingSystem);
+  }
+
+  void installIDE(IDE ide) {
+    _ide = ide;
+  }
+
+  @override
+  String toString() {
+    return "OS: $_operatingSystem, IDE: $_ide";
+  }
+}
 ```
 ### Usage
 ```dart
+  var androidComputer = new LinuxComputer(OS.CentOS);
+  androidComputer.installIDE(IDE.AndroidStudio);
+
+  print(androidComputer);
+
+  var javaComputer = androidComputer.clone();
+  javaComputer.installIDE(IDE.IntelIJ);
+  print(javaComputer);
 ```
 
 Object Pool
@@ -347,9 +392,67 @@ Object Pool
 The object pool pattern is a software creational design pattern that uses a set of initialized objects kept ready to use – a "pool" – rather than allocating and destroying them on demand. - [Wikipedia](https://en.wikipedia.org/wiki/Adapter_pattern)
 ### Implementation
 ```dart
+class Developer {
+  String id;
+
+  Developer(this.id);
+
+  void develop() {
+    print("Writes code, fixes bug");
+  }
+  @override
+  String toString() {
+    return id;
+  }
+}
+
+class DeveloperPool {
+  List<Developer> _availableDevelopers = [];
+  List<Developer> _inUseDevelopers = [];
+
+  Developer pick() {
+    var dev = _availableDevelopers.length != 0 ? _availableDevelopers.first : null;
+    if (dev == null) {
+      int rand = Random().nextInt(100);
+      String id = "developer_id $rand";
+      dev = Developer(id);
+      _inUseDevelopers.add(dev);
+    }
+    return dev;
+  }
+
+   void release(Developer developer) {
+    _inUseDevelopers.removeWhere((Developer dev) => dev.id == developer.id);
+    _availableDevelopers.add(developer);
+   }
+
+   void terminate(Developer developer) {
+      if (_inUseDevelopers.firstWhere((dev) => dev.id == developer.id) != null) {
+        throw ("Cannot terminate a develop who is now using.");
+     }
+      _availableDevelopers.removeWhere((dev) => dev.id == developer.id);
+   }
+}
 ```
 ### Usage
 ```dart
+  var pool = DeveloperPool();
+  var webDev = pool.pick();
+  print(webDev);
+  webDev.develop();
+
+  var mobile = pool.pick();
+  print(mobile);
+
+  pool.release(webDev);
+  var dom = pool.pick();
+  print(dom);
+
+  try {
+    pool.terminate(mobile);
+  } catch (error) {
+    print(error);
+  }
 ```
 
 ## [Structural](https://en.wikipedia.org/wiki/Structural_pattern)
@@ -468,9 +571,87 @@ Chain of Responsibility
 The chain-of-responsibility pattern is a design pattern consisting of a source of command objects and a series of processing objects.[1] Each processing object contains logic that defines the types of command objects that it can handle; the rest are passed to the next processing object in the chain. - [Wikipedia](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern)
 ### Implementation
 ```dart
+enum SeverityLevel {
+  TRACE, INFO, DEBUG, WARNING, ERROR, FATAL
+}
+
+abstract class Logger {
+  SeverityLevel _level;
+  Logger _nextLogger;
+
+  Logger(this._level);
+
+  Logger setNextLogger(Logger logger) {
+    this._nextLogger = logger;
+    return _nextLogger;
+  }
+
+  void log(SeverityLevel severity, String message) {
+    if (_level == severity) {
+      _write(message);
+    }
+    if (_nextLogger != null) {
+      _nextLogger.log(severity, message);
+    }
+  }
+
+  void _write(String message);
+}
+
+class ConsoleLogger extends Logger {
+  ConsoleLogger(SeverityLevel level) : super(level);
+  @override
+  void _write(String message) {
+    print("[CONSOLE]: $message");
+  }
+}
+
+class FileLogger extends Logger {
+  FileLogger(SeverityLevel level) : super(level);
+
+  @override
+  void _write(String message) {
+    print("[FILE]: $message");
+  }
+}
+
+class EmailLogger extends Logger {
+  EmailLogger(SeverityLevel level) : super(level);
+
+  @override
+  void _write(String message) {
+    print("[EMAIL]: $message");
+  }
+}
+
+enum Variant {
+  DEBUG, UAT
+}
+
+abstract class LoggerFactory {
+  static Logger getLogger(Variant variant) {
+    switch (variant) {
+      case Variant.UAT:
+        var consoleLogger = ConsoleLogger(SeverityLevel.DEBUG);
+        var fileLogger = consoleLogger.setNextLogger(FileLogger(SeverityLevel.ERROR));
+        fileLogger.setNextLogger(EmailLogger(SeverityLevel.FATAL));
+        return consoleLogger;
+      case Variant.DEBUG:
+        var consoleLogger = ConsoleLogger(SeverityLevel.DEBUG);
+        consoleLogger.setNextLogger(FileLogger(SeverityLevel.ERROR));
+        return consoleLogger;
+    }
+    var consoleLogger = ConsoleLogger(SeverityLevel.DEBUG);
+    return consoleLogger;
+  }
+}
 ```
 ### Usage
 ```dart
+  var log = LoggerFactory.getLogger(Variant.UAT);
+  log.log(SeverityLevel.DEBUG, "Log to console");
+  log.log(SeverityLevel.ERROR, "Writing to log file.");
+  log.log(SeverityLevel.FATAL, "Sending to emails.");
 ```
 
 Command
